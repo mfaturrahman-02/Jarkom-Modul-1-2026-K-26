@@ -444,23 +444,228 @@ Kerahasiaan Maju (Forward Secrecy): Penyadap di tengah jalan (seperti Wireshark)
 14. Setelah gagal mengakses FTP, Eiri melancarkan serangan brute-force terhadap form login web Alice. Analisis file capture wired_bruteforce.pcapng untuk mengidentifikasi alamat IP penyerang, target IP beserta port yang diserang, password user lain_admin yang berhasil ditembus, serta web server software dan versi yang dilaporkan pada response header. Validasi temuan kalian pada socket server:
 (link file) nc [IP_Group] 3401 
 
+Melakukan netcat ke nc 10.4.89.247 3401
+```sh
+nc 10.4.89.247 3401
+```
+
+What is the IP address of the attacker performing the brute force attack?
+```sh
+172.26.7.50
+```
+
+What is the target IP and port being attacked?
+Format: IP:port
+
+```sh
+172.26.7.100:8080
+```
+What is the password found for the user lain_admin?
+Format: string
+
+Pada filter wireshark gunakan 
+```sh
+http.request.method == "POST" && http contains "name=lain_admin"
+```
+Maka jawabannya
+```sh
+wired_pr0tocol_7
+```
+
+What is the web server software and version reported in the response header?
+Format: Software/X.X.X (e.g. Apache/2.4.0)
+
+```sh
+Apache/2.4.62
+```
+
+flag ditemukan
+![](asset/wireshark/no14.png)
+
+
+
 15. menyusup ke ruang server dan memasang perangkat keyboard USB berbahaya pada node Alice. Buka file capture wired_usb_hid.pcap, identifikasi Vendor ID dan Product ID perangkat USB dari deskriptor USB, alamat nomor device USB, serta pesan rahasia yang berhasil dicuri dari keystroke. Validasi temuan kalian pada socket server:
 (link file) nc [IP_Group] 3402
+
+lakukan pada filter 
+```sh
+usb.idVendor 
+
+```
+akan ditemukan idVendor:0x046d dan idproduct:0xc31c
+
+What is the USB device address assigned to the keyboard?
+Format: int
+
+```sh
+7
+```
+
+kita capture semua hex pada wireshark
+```sh
+tshark -r capture.pcap -Y "usb.capdata && usb.data_len == 8" -T fields -e usb.capdata > hex.txt
+```
+selanjutnya jalankan skrip 
+```sh
+#!/bin/bash
+
+if [ -z "$1" ]; then
+    echo "Penggunaan: $0 <file_hex.txt>"
+    exit 1
+fi
+
+file_input="$1"
+
+if [ ! -f "$file_input" ]; then
+    echo "Error: File '$file_input' tidak ditemukan!"
+    exit 1
+fi
+
+while IFS= read -r hex || [ -n "$hex" ]; do
+    hex_clean=$(echo "$hex" | tr -d ':')
+    
+    # Ambil Modifier (byte 1) dan Keycode (byte 3)
+    mod="${hex_clean:0:2}"
+    byte="${hex_clean:4:2}"
+    
+    if [ -n "$byte" ] && [ "$byte" != "00" ]; then
+        code=$((16#$byte))
+        mod_code=$((16#$mod))
+        
+        # Cek apakah Shift aktif (Left Shift 0x02 atau Right Shift 0x20)
+        is_shift=0
+        if [ $((mod_code & 0x22)) -ne 0 ]; then
+            is_shift=1
+        fi
+
+        if [ $code -ge 4 ] && [ $code -le 29 ]; then
+            # Huruf a-z / A-Z
+            if [ $is_shift -eq 1 ]; then
+                printf "\\$(printf '%03o' $((code + 61)))"
+            else
+                printf "\\$(printf '%03o' $((code + 93)))"
+            fi
+        elif [ $code -ge 30 ] && [ $code -le 39 ]; then
+            # Angka / Simbol atas angka
+            if [ $is_shift -eq 1 ]; then
+                case $code in
+                    30) printf "!" ;; 31) printf "@" ;; 32) printf "#" ;;
+                    33) printf "$" ;; 34) printf "%%" ;; 35) printf "^" ;;
+                    36) printf "&" ;; 37) printf "*" ;; 38) printf "(" ;;
+                    39) printf ")" ;;
+                esac
+            else
+                if [ $code -eq 39 ]; then printf "0"; else printf "$((code - 29))"; fi
+            fi
+        else
+            # Tombol Spesial Lainnya
+            case $code in
+                40) echo "" ;;          # Enter
+                44) printf " " ;;       # Spasi
+                45) [ $is_shift -eq 1 ] && printf "_" || printf "-" ;;
+                46) [ $is_shift -eq 1 ] && printf "+" || printf "=" ;;
+                47) [ $is_shift -eq 1 ] && printf "{" || printf "[" ;;
+                48) [ $is_shift -eq 1 ] && printf "}" || printf "]" ;;
+                51) [ $is_shift -eq 1 ] && printf ":" || printf ";" ;;
+                52) [ $is_shift -eq 1 ] && printf '"' || printf "'" ;;
+                54) [ $is_shift -eq 1 ] && printf "<" || printf "," ;;
+                55) [ $is_shift -eq 1 ] && printf ">" || printf "." ;;
+                56) [ $is_shift -eq 1 ] && printf "?" || printf "/" ;;
+            esac
+        fi
+    fi
+done < "$file_input"
+
+echo ""
+```
+
+![](asset/wireshark/no15.png)
+
 
 16. Eiri meletakkan file malware di server. Dari file capture wired_ftp_theft.pcap, lakukan analisis lalu lintas FTP untuk mengidentifikasi alamat IP server FTP penyerang, banner software FTP yang digunakan, kredensial login penyerang, serta ukuran (size in bytes) dari file malware knights_payload.exe yang diunduh. Validasi temuan kalian pada socket server:
 	(link file) nc [IP_Group] 3403 
 
+pada filter
+```sh
+ftp
+```
+
+setelah menemukan lalu lintas ftp, temukan packet yang berisi versi ftp lalu ikuti stream tcp
+lalu akan ditemukan
+```sh
+ip penyerang 198.51.100.7
+knights_agent:N4v1_s3cur3_2026
+vsftpd 3.0.5
+ukuran 524288
+```
+![](asset/wireshark/no16.png)
 
 17. Alice membuat halaman web di node-nya. Eiri memanfaatkan celah untuk mengunduh payload berbahaya ke sistem Alice. Analisis file capture wired_http_c2.pcap untuk mengidentifikasi nama domain (Host) tempat malware diunduh, alamat IP server penyerang, nama file executable malware yang diunduh, serta kode status HTTP yang dikembalikan. Validasi temuan kalian pada socket server:
 (link file) nc [IP_Group] 3404
 
+temukan pcap yang mencurigakan setelah itu follow steam http
+lalu akan ditemukan
+![](asset/wireshark/no17_1.png)
+![](asset/wireshark/no17.png)
+```sh
+ip:203.0.113.42
+host:wired-update.net
+nama file:navi_agent.exe
+status http:200
+ ```
+![](asset/wireshark/no17_2.png)
 
 18. Eiri mengubah taktik penyerangan dengan menanamkan file malware menggunakan protokol file sharing SMB. Analisis file capture wired_smb_transfer.pcapng untuk mengidentifikasi nama protokol jaringan yang dieksploitasi, IP pengirim dan penerima, folder tujuan penyimpanan malware pada sistem korban, serta nama file executable malware yang ditransfer. Validasi temuan kalian pada socket server:
 (link file) nc [IP_Group] 3405
+
+temukan pcap yang mencurigakan setelah itu follow steam tcp
+lalu akan ditemukan
+![](asset/wireshark/no18_1.png)
+![](asset/wireshark/no19_2.png)
+```sh
+format Protocol: smb2
+ip source:10.7.3.100
+ip destionion:10.7.1.50
+folder tujuan dan nama file :System32\wired_trojan_payload.exe
+ ```
+![](asset/wireshark/no18_3.png)
 
 
 19. Eiri meneror jaringan dengan mengirimkan email pemerasan melalui protokol SMTP tanpa enkripsi. Analisis file capture wired_smtp_threat.pcap pada stream TCP terkait, identifikasi alamat email korban yang ditargetkan, password korban yang diklaim bocor oleh penyerang, jenis malware yang diinfeksikan, batas waktu (dalam hari) yang diberikan, serta MailClientID yang tercantum pada pesan. Validasi temuan kalian pada socket server:
 	(link file) nc [IP_Group] 3406
 
 
+temukan pcap yang mencurigakan setelah itu follow steam tcp
+lalu akan ditemukan
+![](asset/wireshark/no19_1.png)
+![](asset/wireshark/no18_2.png)
+```sh
+Alamat email target:victim@protocol7.co.jp
+password target: pr0tocol_7_user
+jenis_malware: ramsomware
+batas waktu:3
+MailClientID:7719980706
+ ```
+![](asset/wireshark/no19_3.png)
+
 20. Untuk rencana pamungkasnya, Eiri menyembunyikan komunikasi malware di balik saluran terenkripsi TLS. Namun Alice telah menyediakan file keylog untuk mendekripsi lalu lintas data tersebut. Analisis file capture wired_tls_decrypt.pcapng bersama keyslogfile.txt untuk mengidentifikasi versi protokol TLS yang dinegosiasikan, nama domain (SNI) yang diakses, alamat IP server HTTPS penyerang, User-Agent yang digunakan, serta HTTP request method dan path yang tersembunyi di dalam sesi dekripsi. Validasi temuan kalian pada socket server: (link file) nc [IP_Group] 3407
+
+karena masih terencrypt, buka menu Edit > Preferences, selanjutnya pilih protokol tls dan masukkan berkas keylognya maka akan tampil hasil decryptnya
+
+Dari hasil packet langsung terlihat semua jawabannya, untuk lebih jelas pilih packet yang protocol http lalu ikuti stream http
+
+
+![](asset/wireshark/no20_1.png)
+![](asset/wireshark/no20.png)
+```sh
+TLS protocol version: TLSv1.2
+
+domain name (SNI / Host): example.com
+
+ip address server penyerang : 93.184.216.34
+
+user-Agent: curl/7.62.0
+
+HTTP request method and path : HEAD / HTTP/1.1
+```
+![](asset/wireshark/no20_3.png)
