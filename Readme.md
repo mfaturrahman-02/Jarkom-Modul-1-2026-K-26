@@ -4,7 +4,7 @@
 
 | Nama                         | NRP        |
 | ---------------------------- | ---------- |
-| Az Zahra Fiddien Al Farabi          | 5027251114 |
+| Az Zahra Fiddien Al Farabi          | 5027251021 |
 | Muhammad Faturrahman | 5027241065 |
 
 ## Laporan
