@@ -535,8 +535,9 @@ chown -R mika_admin:mika_admin /home/mika_admin/.ssh
 
 ```
 
+Jalankan pada knights
 ```sh
-echo "key ssh dari mika_admin" >> /home/mika_admin/.ssh/authorized_keys
+echo "key ssh dari mika_admin( lakukan cat /home/mika_admin/.ssh/id_rsa.pub pada mika untuk mendapatkan key ssh)" >> /home/mika_admin/.ssh/authorized_keys
 chmod 600 /home/mika_admin/.ssh/authorized_keys
 chown mika_admin:mika_admin /home/mika_admin/.ssh/authorized_keys
 ```
