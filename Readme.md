@@ -70,7 +70,7 @@ konfigurasi untuk chisa
 ```
 auto eth0
 iface eth0 inet static
-  address 192.224.2.3
+  address 192.224.2.2
   netmask 255.255.255.0
   gateway  192.224.2.1
 ```
@@ -138,6 +138,10 @@ echo nameserver 192.168.122.1 > /etc/resolv.conf
 iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
 ```
 ![](asset/ping/client_ke_google.png)
+Jalankan pada semua client 
+```sh
+echo "nameserver 8.8.8.8" > /etc/resolv.conf
+```
 
 5. Eiri tetap berupaya menanamkan kekacauan ke dalam jaringan. Untuk mengantisipasi restart tiba-tiba, pastikan seluruh konfigurasi jaringan tidak hilang saat semua node di-restart. Buat script verifikasi di /root/cek_status.sh pada router Lain yang menampilkan ringkasan interface (ip -br a) dan status tabel NAT (iptables -t nat -L -v -n) setelah reboot.
 
@@ -156,6 +160,122 @@ iptables -t nat -L -v -n
 EOF
 ```
 
+Pada lain
+```sh
+cat <<EOF > /etc/network/interfaces 
+auto eth1
+iface eth1 inet static
+  address 192.224.1.1
+  netmask 255.255.255.0
+
+auto eth2
+iface eth2 inet static
+  address 192.224.2.1
+  netmask 255.255.255.0
+
+auto eth3
+iface eth3 inet static
+  address 192.224.3.1
+  netmask 255.255.255.0
+  
+EOF 
+
+apt update
+which iptables &>/dev/null || apt install iptables -y
+which vsftpd &>/dev/null || apt install vsftpd -y
+which sshd &>/dev/null || apt install openssh-server -y
+```
+
+pada alice
+```sh
+cat <<EOF > /etc/network/interfaces 
+auto eth0
+iface eth0 inet static
+  address 192.224.1.2
+  netmask 255.255.255.0
+  gateway  192.224.1.1
+
+EOF
+echo "nameserver 8.8.8.8" > /etc/resolv.conf
+apt update
+which ftp &>/dev/null 2>&1 || apt install ftp lftp -y
+```
+
+pada alice
+```sh
+cat <<EOF > /etc/network/interfaces 
+auto eth0
+iface eth0 inet static
+  address 192.224.1.2
+  netmask 255.255.255.0
+  gateway  192.224.1.1
+
+EOF
+echo "nameserver 8.8.8.8" > /etc/resolv.conf
+apt update
+which ftp &>/dev/null 2>&1 || apt install ftp lftp -y
+```
+
+pada mika
+```sh
+cat <<EOF > /etc/network/interfaces 
+auto eth0
+iface eth0 inet static
+  address 192.224.1.3
+  netmask 255.255.255.0
+  gateway 192.224.1.1
+
+EOF
+echo "nameserver 8.8.8.8" > /etc/resolv.conf
+apt update
+which ftp &>/dev/null 2>&1 || apt install ftp lftp -y
+```
+
+pada chisa
+```sh
+cat <<EOF > /etc/network/interfaces 
+auto eth0
+iface eth0 inet static
+  address 192.224.2.2
+  netmask 255.255.255.0
+  gateway 192.224.2.1
+
+EOF
+echo "nameserver 8.8.8.8" > /etc/resolv.conf
+apt update
+which vsftpd &>/dev/null || apt install vsftpd -y
+```
+
+pada knights
+```sh
+cat <<EOF > /etc/network/interfaces 
+auto eth0
+iface eth0 inet static
+  address 192.224.3.2
+  netmask 255.255.255.0
+  gateway 192.224.3.1
+
+EOF
+echo "nameserver 8.8.8.8" > /etc/resolv.conf
+apt update
+which ftp &>/dev/null 2>&1 || apt install ftp lftp -y
+```
+
+pada eiri
+
+```sh
+cat <<EOF > /etc/network/interfaces 
+auto eth0
+iface eth0 inet static
+  address 192.224.3.3
+  netmask 255.255.255.0
+  gateway 192.224.3.1
+
+EOF
+echo "nameserver 8.8.8.8" > /etc/resolv.conf
+apt update
+which ftp &>/dev/null 2>&1 || apt install ftp lftp -y
+```
 6. Mika mencurigai adanya anomali traffic pada segmen jaringannya. Jalankan generator traffic berikut (link file) pada node Mika, lalu lakukan packet sniffing menggunakan Wireshark pada interface node Mika. Terapkan display filter khusus untuk menyaring paket yang berprotokol DNS atau ICMP. Tunjukkan screenshot hasil filter beserta ringkasan paket yang lolos.
 
 jalankan script 
@@ -233,12 +353,17 @@ echo "[+] Konfigurasi FTP Server Selesai!"
 ```
 
 setelah menjelankan skrip lakukan
-```
+```sh
 service vsftpd restart
 service vsftpd status
 ```
 ![](asset/ftp/cek_status.png)
 
+Pada setiap client yang ingin melakukan ftp ke chisa lakukan ini terlebih dahulu
+
+```sh
+apt install ftp lftp -y
+```
 
 Mengecek bukti alice dapat melakukan write and read di chisa
 ![](asset/ftp/cek_alice.png)
