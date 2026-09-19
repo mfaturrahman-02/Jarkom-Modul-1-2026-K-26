@@ -422,11 +422,16 @@ bukti hasil screenshot
 
 9. Mika mengakses dokumen Protokol Tujuh di (link file) dari FTP Server Chisa. Dari node Mika, unduh file tersebut menggunakan akun mika. Setelah itu, buktikan pembatasan read-only dengan mencoba mengunggah file baru dari akun mika, dan tunjukkan pesan error respon server (error 550 Permission denied) saat mika mencoba melakukan upload.
 
+Pada chisa lakukan download file pada /var/wired/data
+```sh
+wget -O protocol7_manifesto.zip "https://drive.google.com/drive/folders/1S3hG0dnZBTkCta4uILWwKVc6dSYYGRJ6" --no-check-certificate
+```
+
 
 ```sh
 ftp 192.224.2.2
 get protocol7_manifesto.zip
-pur protocol7_manifesto.zip
+put protocol7_manifesto.zip
 ```
 ![](asset/ftp/no.9.png)
 
@@ -542,6 +547,12 @@ chmod 600 /home/mika_admin/.ssh/authorized_keys
 chown mika_admin:mika_admin /home/mika_admin/.ssh/authorized_keys
 ```
 
+setelah itu matikan pengecekan pw pada knights
+```sh
+sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config
+sed -i 's/PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config
+```
+
 Jalankan wireshark untuk tangkap sesi ssh dari mika ke knights
 ```sh
 ssh mika_admin@192.224.3.2
@@ -554,6 +565,8 @@ Kerahasiaan Maju (Forward Secrecy): Penyadap di tengah jalan (seperti Wireshark)
 
 14. Setelah gagal mengakses FTP, Eiri melancarkan serangan brute-force terhadap form login web Alice. Analisis file capture wired_bruteforce.pcapng untuk mengidentifikasi alamat IP penyerang, target IP beserta port yang diserang, password user lain_admin yang berhasil ditembus, serta web server software dan versi yang dilaporkan pada response header. Validasi temuan kalian pada socket server:
 (link file) nc [IP_Group] 3401 
+
+![](asset/wireshark/no_14.png)
 
 Melakukan netcat ke nc 10.4.89.247 3401
 ```sh
@@ -604,6 +617,7 @@ usb.idVendor
 
 ```
 akan ditemukan idVendor:0x046d dan idproduct:0xc31c
+![](asset/wireshark/no_15.png)
 
 What is the USB device address assigned to the keyboard?
 Format: int

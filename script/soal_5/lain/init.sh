@@ -19,6 +19,9 @@ iface eth3 inet static
 
 EOF
 
+echo nameserver 192.168.122.1 > /etc/resolv.conf
+iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+
 apt update
 which iptables &>/dev/null || apt install iptables -y
 which vsftpd &>/dev/null || apt install vsftpd -y
